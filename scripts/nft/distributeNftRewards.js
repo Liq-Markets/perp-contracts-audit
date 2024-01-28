@@ -7,8 +7,8 @@ const parse = require('csv-parse')
 
 const inputDir = path.resolve(__dirname, "../..") + "/data/nft/input/"
 
-const earliestTxn = 1651363200 // Sunday, 1 May 2022 00:00:00
-const shouldSendTokens = true
+const earliestTxn = 1669852800 // Tuesday, 1 November 2022 00:00:00
+const shouldSendTokens = false
 
 function bigNumberify(n) {
   return ethers.BigNumber.from(n)

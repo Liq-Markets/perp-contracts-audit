@@ -1,28 +1,35 @@
-const { deployContract, contractAt, sendTxn, getFrameSigner } = require("../shared/helpers")
+const { deployContract, contractAt, sendTxn } = require("../shared/helpers")
+const { signExternally } = require("../shared/signer")
 const { expandDecimals } = require("../../test/shared/utilities")
 
 const network = (process.env.HARDHAT_NETWORK || 'mainnet');
 
 async function getArbValues() {
   const vault = await contractAt("Vault", "0x489ee077994B6658eAfA855C308275EAd8097C4A")
-  const tokenManager = { address: "0x7b78CeEa0a89040873277e279C40a08dE59062f5" }
-  const mintReceiver = { address: "0x50F22389C10FcC3bA9B1AB9BCDafE40448a357FB" }
+  const tokenManager = { address: "0xddDc546e07f1374A07b270b7d863371e575EA96A" }
+  const glpManager = { address: "0x3963FfC9dff443c2A94f21b129D429891E32ec18" }
+  const prevGlpManager = { address: "0x321F653eED006AD1C29D174e17d96351BDe22649" }
+  const rewardRouter = { address: "0x159854e14A862Df9E39E1D128b8e5F70B4A3cE9B" }
 
-  const positionRouter = { address: "0x3D6bA331e3D9702C5e8A8d254e5d8a285F223aba" }
-  const positionManager = { address: "0x87a4088Bd721F83b6c2E5102e2FA47022Cb1c831" }
+  const positionRouter = { address: "0xb87a436B93fFE9D75c5cFA7bAcFff96430b09868" }
+  const positionManager = { address: "0x75E42e6f01baf1D6022bEa862A28774a9f8a4A0C" }
+  const gmx = { address: "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a" }
 
-  return { vault, tokenManager, mintReceiver, positionRouter, positionManager }
+  return { vault, tokenManager, glpManager, prevGlpManager, rewardRouter, positionRouter, positionManager, gmx }
 }
 
 async function getAvaxValues() {
   const vault = await contractAt("Vault", "0x9ab2De34A33fB459b538c43f251eB825645e8595")
-  const tokenManager = { address: "0x26137dfA81f9Ac8BACd748f6A298262f11504Da9" }
-  const mintReceiver = { address: "0x7F98d265Ba2609c1534D12cF6b0976505Ad7F653" }
+  const tokenManager = { address: "0x8b25Ba1cAEAFaB8e9926fabCfB6123782e3B4BC2" }
+  const glpManager = { address: "0xD152c7F25db7F4B95b7658323c5F33d176818EE4" }
+  const prevGlpManager = { address: "0xe1ae4d4b06A5Fe1fc288f6B4CD72f9F8323B107F" }
+  const rewardRouter = { address: "0x0000000000000000000000000000000000000000" }
 
-  const positionRouter = { address: "0x195256074192170d1530527abC9943759c7167d8" }
-  const positionManager = { address: "0xF2ec2e52c3b5F8b8bd5A3f93945d05628A233216" }
+  const positionRouter = { address: "0xffF6D276Bc37c61A23f06410Dce4A400f66420f8" }
+  const positionManager = { address: "0xA21B83E579f4315951bA658654c371520BDcB866" }
+  const gmx = { address: "0x62edc0692BD897D2295872a9FFCac5425011c661" }
 
-  return { vault, tokenManager, mintReceiver, positionRouter, positionManager }
+  return { vault, tokenManager, glpManager, prevGlpManager, rewardRouter, positionRouter, positionManager, gmx }
 }
 
 async function getValues() {
@@ -36,76 +43,65 @@ async function getValues() {
 }
 
 async function main() {
-  const signer = await getFrameSigner()
-
   const admin = "0x49B373D422BdA4C6BfCdd5eC1E48A9a26fdA2F8b"
   const buffer = 24 * 60 * 60
-  const rewardManager = { address: ethers.constants.AddressZero }
-  const maxTokenSupply = expandDecimals("13250000", 18)
+  // the GmxTimelock should have a cap of 13.25m tokens, for other tokens
+  // like Multiplier Points, the supply may exceed 13.25m tokens
+  const maxTokenSupply = expandDecimals(100_000_000, 18)
 
-  const { vault, tokenManager, mintReceiver, positionRouter, positionManager } = await getValues()
+  const { vault, tokenManager, glpManager, prevGlpManager, rewardRouter, positionRouter, positionManager, gmx } = await getValues()
+  const mintReceiver = tokenManager
 
   const timelock = await deployContract("Timelock", [
-    admin,
-    buffer,
-    rewardManager.address,
-    tokenManager.address,
-    mintReceiver.address,
-    maxTokenSupply,
+    admin, // admin
+    buffer, // buffer
+    tokenManager.address, // tokenManager
+    mintReceiver.address, // mintReceiver
+    glpManager.address, // glpManager
+    prevGlpManager.address, // prevGlpManager
+    rewardRouter.address, // rewardRouter
+    maxTokenSupply, // maxTokenSupply
     10, // marginFeeBasisPoints 0.1%
-    100 // maxMarginFeeBasisPoints 1%
+    500 // maxMarginFeeBasisPoints 5%
   ], "Timelock")
 
-  const deployedTimelock = await contractAt("Timelock", timelock.address, signer)
+  const deployedTimelock = await contractAt("Timelock", timelock.address)
 
-  await sendTxn(deployedTimelock.setShouldToggleIsLeverageEnabled(true), "deployedTimelock.setShouldToggleIsLeverageEnabled(true)")
-  await sendTxn(deployedTimelock.setContractHandler(positionRouter.address, true), "deployedTimelock.setContractHandler(positionRouter)")
-  await sendTxn(deployedTimelock.setContractHandler(positionManager.address, true), "deployedTimelock.setContractHandler(positionManager)")
+  await signExternally(await deployedTimelock.populateTransaction.setShouldToggleIsLeverageEnabled(true));
+  await signExternally(await deployedTimelock.populateTransaction.setContractHandler(positionRouter.address, true));
+  await signExternally(await deployedTimelock.populateTransaction.setContractHandler(positionManager.address, true));
 
-  // // update gov of vault, vaultPriceFeed, fastPriceFeed
-  const vaultGov = await contractAt("Timelock", await vault.gov(), signer)
-  const vaultPriceFeed = await contractAt("VaultPriceFeed", await vault.priceFeed())
-  const vaultPriceFeedGov = await contractAt("Timelock", await vaultPriceFeed.gov(), signer)
-  const fastPriceFeed = await contractAt("FastPriceFeed", await vaultPriceFeed.secondaryPriceFeed())
-  const fastPriceFeedGov = await contractAt("Timelock", await fastPriceFeed.gov(), signer)
+  // // update gov of vault
+  // const vaultGov = await contractAt("Timelock", await vault.gov())
 
-  await sendTxn(vaultGov.signalSetGov(vault.address, deployedTimelock.address), "vaultGov.signalSetGov")
-  await sendTxn(vaultPriceFeedGov.signalSetGov(vaultPriceFeed.address, deployedTimelock.address), "vaultPriceFeedGov.signalSetGov")
-  await sendTxn(fastPriceFeedGov.signalSetGov(fastPriceFeed.address, deployedTimelock.address), "fastPriceFeedGov.signalSetGov")
+  // await sendTxn(vaultGov.signalSetGov(vault.address, deployedTimelock.address), "vaultGov.signalSetGov")
+  // await sendTxn(deployedTimelock.signalSetGov(vault.address, vaultGov.address), "deployedTimelock.signalSetGov(vault)")
 
-  await sendTxn(deployedTimelock.signalSetGov(vault.address, vaultGov.address), "deployedTimelock.signalSetGov(vault)")
-  await sendTxn(deployedTimelock.signalSetGov(vaultPriceFeed.address, vaultPriceFeedGov.address), "deployedTimelock.signalSetGov(vaultPriceFeed)")
-  await sendTxn(deployedTimelock.signalSetGov(fastPriceFeed.address, fastPriceFeedGov.address), "deployedTimelock.signalSetGov(fastPriceFeed)")
-
-  const signers = [
+  const handlers = [
     "0x82429089e7c86B7047b793A9E7E7311C93d2b7a6", // coinflipcanada
     "0xD7941C4Ca57a511F21853Bbc7FBF8149d5eCb398", // G
     "0xfb481D70f8d987c1AE3ADc90B7046e39eb6Ad64B", // kr
-    "0x99Aa3D1b3259039E8cB4f0B33d0Cfd736e1Bf49E", // quat
-    "0x6091646D0354b03DD1e9697D33A7341d8C93a6F5", // xhiroz
+    "0x6091646D0354b03DD1e9697D33A7341d8C93a6F5" // xhiroz
+  ]
+
+  for (let i = 0; i < handlers.length; i++) {
+    const handler = handlers[i]
+    await signExternally(await deployedTimelock.populateTransaction.setContractHandler(handler, true));
+  }
+
+  const keepers = [
     "0x5F799f365Fa8A2B60ac0429C48B153cA5a6f0Cf8" // X
   ]
 
-  for (let i = 0; i < signers.length; i++) {
-    const signer = signers[i]
-    await sendTxn(deployedTimelock.setContractHandler(signer, true), `deployedTimelock.setContractHandler(${signer})`)
+  for (let i = 0; i < keepers.length; i++) {
+    const keeper = keepers[i]
+    await signExternally(await deployedTimelock.populateTransaction.setContractHandler(keeper, true));
   }
 
-  const watchers = signers.concat([
-    "0x45e48668F090a3eD1C7961421c60Df4E66f693BD", // Dovey
-    "0x881690382102106b00a99E3dB86056D0fC71eee6", // Han Wen
-    "0x2e5d207a4c0f7e7c52f6622dcc6eb44bc0fe1a13" // Krunal Amin
-  ])
-
-  for (let i = 0; i < watchers.length; i++) {
-    const watcher = watchers[i]
-    await sendTxn(deployedTimelock.signalSetPriceFeedWatcher(fastPriceFeed.address, watcher, true), `deployedTimelock.signalSetPriceFeedWatcher(${watcher})`)
-  }
+  await signExternally(await deployedTimelock.populateTransaction.signalApprove(gmx.address, admin, "1000000000000000000"));
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch(error => {
-    console.error(error)
-    process.exit(1)
-  })
+main().catch((ex) => {
+  console.error(ex);
+  process.exit(1);
+});
