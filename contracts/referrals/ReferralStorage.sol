@@ -9,6 +9,8 @@ import "../peripherals/interfaces/ITimelock.sol";
 
 import "./interfaces/IReferralStorage.sol";
 
+import "../core/interfaces/IFeeSharing.sol";
+
 contract ReferralStorage is Governable, IReferralStorage {
     using SafeMath for uint256;
 
@@ -19,14 +21,14 @@ contract ReferralStorage is Governable, IReferralStorage {
 
     uint256 public constant BASIS_POINTS = 10000;
 
-    mapping (address => uint256) public referrerDiscountShares; // to override default value in tier
-    mapping (address => uint256) public referrerTiers; // link between user <> tier
+    mapping (address => uint256) public override referrerDiscountShares; // to override default value in tier
+    mapping (address => uint256) public override referrerTiers; // link between user <> tier
     mapping (uint256 => Tier) public tiers;
 
     mapping (address => bool) public isHandler;
 
     mapping (bytes32 => address) public override codeOwners;
-    mapping (address => bytes32) public traderReferralCodes;
+    mapping (address => bytes32) public override traderReferralCodes;
 
     event SetHandler(address handler, bool isActive);
     event SetTraderReferralCode(address account, bytes32 code);
@@ -37,6 +39,11 @@ contract ReferralStorage is Governable, IReferralStorage {
     event SetCodeOwner(address account, address newAccount, bytes32 code);
     event GovSetCodeOwner(bytes32 code, address newAccount);
 
+
+    constructor() public {
+        IFeeSharing feeSharing = IFeeSharing(0x8680CEaBcb9b56913c519c069Add6Bc3494B7020); // This address is the address of the SFS contract
+        feeSharing.assign(84); //Registers this contract and assigns the NFT to the owner of this contract
+    }
     modifier onlyHandler() {
         require(isHandler[msg.sender], "ReferralStorage: forbidden");
         _;

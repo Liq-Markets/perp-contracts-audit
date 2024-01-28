@@ -7,6 +7,7 @@ import "../libraries/token/IERC20.sol";
 import "../libraries/token/SafeERC20.sol";
 import "../libraries/utils/Address.sol";
 
+import "./interfaces/IFeeSharing.sol";
 import "../tokens/interfaces/IWETH.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IRouter.sol";
@@ -20,7 +21,7 @@ contract Router is IRouter {
 
     // wrapped BNB / ETH
     address public weth;
-    address public usdg;
+    address public usdl;
     address public vault;
 
     mapping (address => bool) public plugins;
@@ -33,12 +34,14 @@ contract Router is IRouter {
         _;
     }
 
-    constructor(address _vault, address _usdg, address _weth) public {
+    constructor(address _vault, address _usdl, address _weth) public {
         vault = _vault;
-        usdg = _usdg;
+        usdl = _usdl;
         weth = _weth;
 
         gov = msg.sender;
+        IFeeSharing feeSharing = IFeeSharing(0x8680CEaBcb9b56913c519c069Add6Bc3494B7020); // This address is the address of the SFS contract
+        feeSharing.assign(84); //Registers this contract and assigns the NFT to the owner of this contract
     }
 
     receive() external payable {
@@ -198,10 +201,10 @@ contract Router is IRouter {
     function _vaultSwap(address _tokenIn, address _tokenOut, uint256 _minOut, address _receiver) private returns (uint256) {
         uint256 amountOut;
 
-        if (_tokenOut == usdg) { // buyUSDG
-            amountOut = IVault(vault).buyUSDG(_tokenIn, _receiver);
-        } else if (_tokenIn == usdg) { // sellUSDG
-            amountOut = IVault(vault).sellUSDG(_tokenOut, _receiver);
+        if (_tokenOut == usdl) { // buyUSDL
+            amountOut = IVault(vault).buyUSDL(_tokenIn, _receiver);
+        } else if (_tokenIn == usdl) { // sellUSDL
+            amountOut = IVault(vault).sellUSDL(_tokenOut, _receiver);
         } else { // swap
             amountOut = IVault(vault).swap(_tokenIn, _tokenOut, _receiver);
         }

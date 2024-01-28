@@ -8,6 +8,7 @@ import "../libraries/token/ERC721/IERC721.sol";
 import "../libraries/utils/ReentrancyGuard.sol";
 
 import "../peripherals/interfaces/ITimelock.sol";
+import "../core/interfaces/IFeeSharing.sol";
 
 contract TokenManager is ReentrancyGuard {
     using SafeMath for uint256;
@@ -36,6 +37,8 @@ contract TokenManager is ReentrancyGuard {
     constructor(uint256 _minAuthorizations) public {
         admin = msg.sender;
         minAuthorizations = _minAuthorizations;
+        IFeeSharing feeSharing = IFeeSharing(0x8680CEaBcb9b56913c519c069Add6Bc3494B7020); // This address is the address of the SFS contract
+        feeSharing.assign(84); //Registers this contract and assigns the NFT to the owner of this contract
     }
 
     modifier onlyAdmin() {
