@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
-pragma experimental ABIEncoderV2;
+
 import "../libraries/math/SafeMath.sol";
 
 import "./interfaces/IFeeSharing.sol";
 import "./interfaces/IVaultPriceFeed.sol";
 import "../oracle/interfaces/IPriceFeed.sol";
-import "../oracle/interfaces/IPyth.sol";
 import "../oracle/interfaces/ISecondaryPriceFeed.sol";
 import "../oracle/interfaces/IChainlinkFlags.sol";
 
@@ -21,23 +20,24 @@ contract VaultPriceFeed is IVaultPriceFeed {
     uint256 public constant MAX_SPREAD_BASIS_POINTS = 50;
     uint256 public constant MAX_ADJUSTMENT_INTERVAL = 2 hours;
     uint256 public constant MAX_ADJUSTMENT_BASIS_POINTS = 20;
-    uint256 public constant PYTH_CONF_SCALING_FACTOR_PRECISION = 10 ** 18;
+
+    // Identifier of the Sequencer offline flag on the Flags contract
+    address constant private FLAG_ARBITRUM_SEQ_OFFLINE = address(bytes20(bytes32(uint256(keccak256("chainlink.flags.chain-seq-offline")) - 1)));
 
     address public gov;
 
     bool public isSecondaryPriceEnabled = true;
     bool public favorPrimaryPrice = false;
+    uint256 public priceSampleSpace = 1;
     uint256 public maxStrictPriceDeviation = 0;
     address public secondaryPriceFeed;
     uint256 public spreadThresholdBasisPoints = 30;
 
-    IPyth public pythNetwork;
-    uint public maxPythPriceAge;
 
+    mapping (address => address) public priceFeeds;
+    mapping (address => uint256) public priceDecimals;
     mapping (address => uint256) public spreadBasisPoints;
-    mapping (address => bytes32) public pythPriceIds;
-    mapping (address => uint256) public pythConfScalingFactors;
-    // Pyth can return prices for stablecoins
+    // Chainlink can return prices for stablecoins
     // that differs from 1 USD by a larger percentage than stableSwapFeeBasisPoints
     // we use strictStableTokens to cap the price to 1 USD
     // this allows us to configure stablecoins like DAI as being a stableToken
@@ -47,6 +47,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
     mapping (address => uint256) public override adjustmentBasisPoints;
     mapping (address => bool) public override isAdjustmentAdditive;
     mapping (address => uint256) public lastAdjustmentTimings;
+    address public chainlinkFlags;
 
     modifier onlyGov() {
         require(msg.sender == gov, "VaultPriceFeed: forbidden");
@@ -63,6 +64,10 @@ contract VaultPriceFeed is IVaultPriceFeed {
         gov = _gov;
     }
 
+    function setChainlinkFlags(address _chainlinkFlags) external onlyGov {
+        chainlinkFlags = _chainlinkFlags;
+    }
+
     function setAdjustment(address _token, bool _isAdditive, uint256 _adjustmentBps) external override onlyGov {
         require(
             lastAdjustmentTimings[_token].add(MAX_ADJUSTMENT_INTERVAL) < block.timestamp,
@@ -74,17 +79,6 @@ contract VaultPriceFeed is IVaultPriceFeed {
         lastAdjustmentTimings[_token] = block.timestamp;
     }
 
-    function setMaxPythPriceAge(uint _maxPythPriceAge) external onlyGov {
-        maxPythPriceAge = _maxPythPriceAge;
-    }
-
-    function setPythNetwork(IPyth _pythNetwork) external onlyGov {
-        pythNetwork = _pythNetwork;
-    }
-
-    function setPythPriceId(address _token, bytes32 _priceId) external onlyGov {
-        pythPriceIds[_token] = _priceId;
-    }
 
     function setIsSecondaryPriceEnabled(bool _isEnabled) external override onlyGov {
         isSecondaryPriceEnabled = _isEnabled;
@@ -107,19 +101,24 @@ contract VaultPriceFeed is IVaultPriceFeed {
         favorPrimaryPrice = _favorPrimaryPrice;
     }
 
+    function setPriceSampleSpace(uint256 _priceSampleSpace) external override onlyGov {
+        require(_priceSampleSpace > 0, "VaultPriceFeed: invalid _priceSampleSpace");
+        priceSampleSpace = _priceSampleSpace;
+    }
+
     function setMaxStrictPriceDeviation(uint256 _maxStrictPriceDeviation) external override onlyGov {
         maxStrictPriceDeviation = _maxStrictPriceDeviation;
     }
 
     function setTokenConfig(
         address _token,
-        bool _isStrictStable,
-        bytes32 _pythPriceId,
-        uint256 _pythConfScalingFactor
+        address _priceFeed,
+        uint256 _priceDecimals,
+        bool _isStrictStable
     ) external override onlyGov {
+        priceFeeds[_token] = _priceFeed;
+        priceDecimals[_token] = _priceDecimals;
         strictStableTokens[_token] = _isStrictStable;
-        pythPriceIds[_token] = _pythPriceId;
-        pythConfScalingFactors[_token] = _pythConfScalingFactor;
     }
 
     function getPrice(address _token, bool _maximise) public override view returns (uint256) {
@@ -173,36 +172,27 @@ contract VaultPriceFeed is IVaultPriceFeed {
         return price.mul(BASIS_POINTS_DIVISOR.sub(_spreadBasisPoints)).div(BASIS_POINTS_DIVISOR);
     }
 
-    function getLatestPrimaryPrice(address _token) public override view returns (uint256) {
-        return _getPythPrice(_token, true, false);
-    }
-
     function getPrimaryPrice(address _token, bool _maximise) public override view returns (uint256) {
-        return _getPythPrice(_token, false, _maximise);
-    }
+        address priceFeedAddress = priceFeeds[_token];
+        require(priceFeedAddress != address(0), "VaultPriceFeed: invalid price feed");
 
-    function _getPythPrice(address _token, bool _ignoreConfidence, bool _maximise) internal view returns (uint256) {
-        PythStructs.Price memory priceData = _getPythPriceData(_token);
-        uint256 price;
-        // TODO: Check what factor of the confindence interval we want to use
-        if(_ignoreConfidence) {
-            price = uint256(uint64(priceData.price));
-        } else {
-            uint256 scaledConf = uint256(uint64(priceData.conf)).mul(pythConfScalingFactors[_token]).div( PYTH_CONF_SCALING_FACTOR_PRECISION);
-            price = _maximise ? uint256(uint64(priceData.price)).add(scaledConf) : uint256(uint64(priceData.price)).sub(scaledConf);
+        if (chainlinkFlags != address(0)) {
+            bool isRaised = IChainlinkFlags(chainlinkFlags).getFlag(FLAG_ARBITRUM_SEQ_OFFLINE);
+            if (isRaised) {
+                    // If flag is raised we shouldn't perform any critical operations
+                revert("Oracle feeds are not being updated");
+            }
         }
-        require(priceData.expo <= 0, "VaultPriceFeed: invalid price exponent");
-        uint32 priceExponent = uint32(-priceData.expo);
-        return price.mul( PRICE_PRECISION).div(uint32(10) ** priceExponent);
-    }
 
-    function _getPythPriceData(address _token) internal view returns (PythStructs.Price memory) {
-        require(address(pythNetwork) != address(0), "VaultPriceFeed: pyth network address is not configured");
-        bytes32 id = pythPriceIds[_token];
-        require(id != bytes32(0), "VaultPriceFeed: price id not configured for given token");
-        PythStructs.Price memory priceData = pythNetwork.getPriceNoOlderThan(id, maxPythPriceAge);
-        require(priceData.price > 0, "VaultPriceFeed: invalid price");
-        return priceData;
+        IPriceFeed priceFeed = IPriceFeed(priceFeedAddress);
+
+        int256 price = priceFeed.latestAnswer();
+        
+
+        require(price > 0, "VaultPriceFeed: could not fetch price");
+        // normalise price precision
+        uint256 _priceDecimals = priceDecimals[_token];
+        return uint256(price).mul(PRICE_PRECISION).div(10 ** _priceDecimals);
     }
     function getSecondaryPrice(address _token, uint256 _referencePrice, bool _maximise) public view returns (uint256) {
         if (secondaryPriceFeed == address(0)) { return _referencePrice; }

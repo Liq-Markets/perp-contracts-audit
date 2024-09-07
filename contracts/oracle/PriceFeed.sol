@@ -7,8 +7,6 @@ import "./interfaces/IPriceFeed.sol";
 contract PriceFeed is IPriceFeed {
     int256 public answer;
     uint80 public roundId;
-    string public override description = "PriceFeed";
-    address public override aggregator;
 
     uint256 public decimals;
 
@@ -35,7 +33,7 @@ contract PriceFeed is IPriceFeed {
         return roundId;
     }
 
-    function setLatestAnswer(int256 _answer) external override{
+    function setLatestAnswer(int256 _answer) external {
         require(isAdmin[msg.sender], "PriceFeed: forbidden");
         roundId = roundId + 1;
         answer = _answer;

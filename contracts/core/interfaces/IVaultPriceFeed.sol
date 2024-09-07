@@ -12,12 +12,12 @@ interface IVaultPriceFeed {
     function setFavorPrimaryPrice(bool _favorPrimaryPrice) external;
     function setMaxStrictPriceDeviation(uint256 _maxStrictPriceDeviation) external;
     function getPrice(address _token, bool _maximise) external view returns (uint256);
-    function getLatestPrimaryPrice(address _token) external view returns (uint256);
     function getPrimaryPrice(address _token, bool _maximise) external view returns (uint256);
     function setTokenConfig(
         address _token,
-        bool _isStrictStable,
-        bytes32 _pythPriceId,
-        uint256 _pythConfScalingFactor
+        address _priceFeed,
+        uint256 _priceDecimals,
+        bool _isStrictStable
     ) external;
+    function setPriceSampleSpace(uint256 _priceSampleSpace) external;
 }

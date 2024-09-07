@@ -243,17 +243,17 @@ contract PriceFeedTimelock {
     function priceFeedSetTokenConfig(
         address _vaultPriceFeed,
         address _token,
-        bool _isStrictStable,
-        bytes32 _pythPriceId,
-        uint256 _pythConfScalingFactor
+        address _priceFeed,
+        uint256 _priceDecimals,
+        bool _isStrictStable
     ) external onlyAdmin {
         bytes32 action = keccak256(abi.encodePacked(
             "priceFeedSetTokenConfig",
             _vaultPriceFeed,
             _token,
-            _isStrictStable,
-            _pythPriceId,
-            _pythConfScalingFactor
+            _priceFeed,
+            _priceDecimals,
+            _isStrictStable
         ));
 
         _validateAction(action);
@@ -261,9 +261,9 @@ contract PriceFeedTimelock {
 
         IVaultPriceFeed(_vaultPriceFeed).setTokenConfig(
             _token,
-            _isStrictStable,
-            _pythPriceId,
-            _pythConfScalingFactor
+            _priceFeed,
+            _priceDecimals,
+            _isStrictStable
         );
     }
 

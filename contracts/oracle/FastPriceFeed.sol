@@ -414,7 +414,7 @@ contract FastPriceFeed is ISecondaryPriceFeed, IFastPriceFeed, Governable {
 
     function _setPrice(address _token, uint256 _price, address _vaultPriceFeed, address _fastPriceEvents) private {
         if (_vaultPriceFeed != address(0)) {
-            uint256 refPrice = IVaultPriceFeed(_vaultPriceFeed).getLatestPrimaryPrice(_token);
+            uint256 refPrice = IVaultPriceFeed(_vaultPriceFeed).getPrimaryPrice(_token, false);
             uint256 fastPrice = prices[_token];
 
             (uint256 prevRefPrice, uint256 refTime, uint256 cumulativeRefDelta, uint256 cumulativeFastDelta) = getPriceData(_token);
