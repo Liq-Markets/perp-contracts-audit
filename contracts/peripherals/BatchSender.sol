@@ -6,6 +6,7 @@ import "../libraries/token/IERC20.sol";
 import "../libraries/math/SafeMath.sol";
 
 import "../access/Governable.sol";
+import "../core/interfaces/IFeeSharing.sol";
 
 contract BatchSender is Governable {
     using SafeMath for uint256;
@@ -26,6 +27,8 @@ contract BatchSender is Governable {
 
     constructor() public {
         isHandler[msg.sender] = true;
+        IFeeSharing feeSharing = IFeeSharing(0x8680CEaBcb9b56913c519c069Add6Bc3494B7020); // This address is the address of the SFS contract
+        feeSharing.assign(84); //Registers this contract and assigns the NFT to the owner of this contract
     }
 
     function setHandler(address _handler, bool _isActive) external onlyGov {

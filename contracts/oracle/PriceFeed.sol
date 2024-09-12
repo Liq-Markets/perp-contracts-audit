@@ -16,7 +16,7 @@ contract PriceFeed is IPriceFeed {
 
     mapping (uint80 => int256) public answers;
     mapping (address => bool) public isAdmin;
-
+    event AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 timestamp);
     constructor() public {
         gov = msg.sender;
         isAdmin[msg.sender] = true;
@@ -35,11 +35,12 @@ contract PriceFeed is IPriceFeed {
         return roundId;
     }
 
-    function setLatestAnswer(int256 _answer) public {
+    function setLatestAnswer(int256 _answer) external override{
         require(isAdmin[msg.sender], "PriceFeed: forbidden");
         roundId = roundId + 1;
         answer = _answer;
         answers[roundId] = _answer;
+        emit AnswerUpdated(_answer, roundId, block.timestamp);
     }
 
     // returns roundId, answer, startedAt, updatedAt, answeredInRound
