@@ -13,7 +13,7 @@ contract PythToChainlinkWrapper is IPriceFeed {
     uint256 public pythConfScalingFactor;
     uint256 public maxPythPriceAge;
     uint256 public PYTH_CONF_SCALING_FACTOR_PRECISION = 1e18;
-    uint256 public constant PRICE_PRECISION = 10 ** 30;
+    uint256 public constant PRICE_PRECISION = 10 ** 8;
 
 
     constructor(address _pyth, bytes32 _priceId, address _token, uint256 _pythConfScalingFactor, uint256 _maxPythPriceAge) public {

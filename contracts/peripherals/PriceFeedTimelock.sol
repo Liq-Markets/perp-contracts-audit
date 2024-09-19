@@ -40,9 +40,9 @@ contract PriceFeedTimelock {
     event SignalPriceFeedSetTokenConfig(
         address vaultPriceFeed,
         address token,
-        bool isStrictStable,
-        bytes32 pythPriceId,
-        uint256 pythConfScalingFactor
+        address priceFeed,
+        uint256 priceDecimals,
+        bool isStrictStable
     );
     event ClearAction(bytes32 action);
 
@@ -216,17 +216,17 @@ contract PriceFeedTimelock {
     function signalPriceFeedSetTokenConfig(
         address _vaultPriceFeed,
         address _token,
-        bool _isStrictStable,
-        bytes32 _pythPriceId,
-        uint256 _pythConfScalingFactor
+        address _priceFeed,
+        uint256 _priceDecimals,
+        bool _isStrictStable
     ) external onlyAdmin {
         bytes32 action = keccak256(abi.encodePacked(
             "priceFeedSetTokenConfig",
             _vaultPriceFeed,
             _token,
-            _isStrictStable,
-            _pythPriceId,
-            _pythConfScalingFactor
+            _priceFeed,
+            _priceDecimals,
+            _isStrictStable
         ));
 
         _setPendingAction(action);
@@ -234,9 +234,9 @@ contract PriceFeedTimelock {
         emit SignalPriceFeedSetTokenConfig(
             _vaultPriceFeed,
             _token,
-            _isStrictStable,
-            _pythPriceId,
-            _pythConfScalingFactor
+            _priceFeed,
+            _priceDecimals,
+            _isStrictStable
         );
     }
 
