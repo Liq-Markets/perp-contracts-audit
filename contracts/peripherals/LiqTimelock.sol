@@ -63,9 +63,9 @@ contract LiqTimelock is ILiqTimelock {
     event SignalPriceFeedSetTokenConfig(
         address vaultPriceFeed,
         address token,
-        bool isStrictStable,
-        bytes32 pythPriceId,
-        uint256 pythConfScalingFactor
+        address _priceFeed,
+        uint256 _priceDecimals,
+        bool _isStrictStable
     );
     event ClearAction(bytes32 action);
 
@@ -227,14 +227,6 @@ contract LiqTimelock is ILiqTimelock {
 
     function setSpreadBasisPoints(address _priceFeed, address _token, uint256 _spreadBasisPoints) external onlyAdmin {
         IVaultPriceFeed(_priceFeed).setSpreadBasisPoints(_token, _spreadBasisPoints);
-    }
-
-    function setSpreadThresholdBasisPoints(address _priceFeed, uint256 _spreadThresholdBasisPoints) external onlyAdmin {
-        IVaultPriceFeed(_priceFeed).setSpreadThresholdBasisPoints(_spreadThresholdBasisPoints);
-    }
-
-    function setFavorPrimaryPrice(address _priceFeed, bool _favorPrimaryPrice) external onlyAdmin {
-        IVaultPriceFeed(_priceFeed).setFavorPrimaryPrice(_favorPrimaryPrice);
     }
 
     function setIsSwapEnabled(address _vault, bool _isSwapEnabled) external onlyAdmin {
@@ -461,17 +453,17 @@ contract LiqTimelock is ILiqTimelock {
     function signalPriceFeedSetTokenConfig(
         address _vaultPriceFeed,
         address _token,
-        bool _isStrictStable,
-        bytes32 _pythPriceId,
-        uint256 _pythConfScalingFactor
+        address _priceFeed,
+        uint256 _priceDecimals,
+        bool _isStrictStable
     ) external onlyAdmin {
         bytes32 action = keccak256(abi.encodePacked(
             "priceFeedSetTokenConfig",
             _vaultPriceFeed,
             _token,
-            _isStrictStable,
-            _pythPriceId,
-            _pythConfScalingFactor
+            _priceFeed,
+            _priceDecimals,
+            _isStrictStable
         ));
 
         _setPendingAction(action);
@@ -479,9 +471,9 @@ contract LiqTimelock is ILiqTimelock {
         emit SignalPriceFeedSetTokenConfig(
             _vaultPriceFeed,
             _token,
-            _isStrictStable,
-            _pythPriceId,
-            _pythConfScalingFactor
+            _priceFeed,
+            _priceDecimals,
+            _isStrictStable
         );
     }
 

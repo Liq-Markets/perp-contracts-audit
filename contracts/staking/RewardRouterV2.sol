@@ -133,17 +133,17 @@ contract RewardRouterV2 is ReentrancyGuard, Governable {
         return amountOut;
     }
 
-    function claim(address _rewardToken, bool _compound, bool _withdrawETH) external nonReentrant {
+    function claim(address _rewardToken, bool _compound, bool _withdrawETH,  uint256 _minUsdl, uint256 _minLlp) external nonReentrant {
         require(IRewardTracker(feeLlpTracker).allTokens(_rewardToken), "RewardRouter: not _rewardToken"); // TODO check against token if reward token exist
         address account = msg.sender;
         if(_compound && IVault(vault).whitelistedTokens(_rewardToken)) {
             uint256 amount = IRewardTracker(feeLlpTracker).claimForAccount(account, _rewardToken, address(this));
             if (amount > 0) {
                 if(_rewardToken == weth) {
-                    _mintAndStakeLlpEth(amount, 0, 0);
+                    _mintAndStakeLlpEth(amount, _minUsdl, _minLlp);
                 } else {
                     IERC20(_rewardToken).approve(llpManager, amount);
-                    _mintAndStakeLlp(address(this), account, _rewardToken, amount, 0, 0);
+                    _mintAndStakeLlp(address(this), account, _rewardToken, amount, _minUsdl, _minLlp);
                 }
             }
         }else if(_withdrawETH && _rewardToken == weth) {
@@ -159,7 +159,9 @@ contract RewardRouterV2 is ReentrancyGuard, Governable {
 
     function handleRewards(
         bool _shouldConvertWethToEth,
-        bool _shouldCompound
+        bool _shouldCompound,
+        uint256 _minUsdl,
+        uint256 _minLlp
     ) external nonReentrant {
         address account = msg.sender;
 
@@ -171,10 +173,10 @@ contract RewardRouterV2 is ReentrancyGuard, Governable {
                 if(amount > 0){
                     if(_shouldCompound && IVault(vault).whitelistedTokens(token)){ 
                         if(token == weth){
-                            _mintAndStakeLlpEth(amount,0,0);
+                            _mintAndStakeLlpEth(amount, _minUsdl, _minLlp);
                         }else{
                             IERC20(token).approve(llpManager, amount);
-                            _mintAndStakeLlp(address(this),account,token,amount,0,0);
+                            _mintAndStakeLlp(address(this),account,token,amount, _minUsdl, _minLlp);
                         }
                     }else if(_shouldConvertWethToEth && token == weth ){
                         IWETH(weth).withdraw(amount);

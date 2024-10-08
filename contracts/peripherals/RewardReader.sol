@@ -37,18 +37,21 @@ contract RewardReader {
         for (uint256 i = 0; i < _rewardTrackers.length; i++) {
             IRewardTracker rewardTracker = IRewardTracker(_rewardTrackers[i]);
             address[] memory rewardTokens = IRewardTracker(_rewardTrackers[i]).getAllRewardTokens();
+            uint256 offset = 0;
 
-            for (uint256 j = 0; j < rewardTokens.length; j++) {
+           for (uint256 j = 0; j < rewardTokens.length; j++) {
+            
+               address rewardToken = rewardTokens[j];
+               rewardTokenAddresses[i*rewardTokens.length + j] = rewardToken;
+               amounts[offset + j * propsLength] = rewardTracker.claimable(_account, rewardToken);
+               amounts[offset + j * propsLength + 1] = rewardTracker.tokensPerInterval(rewardToken);
+               amounts[offset + j * propsLength + 2] = rewardTracker.averageStakedAmounts(_account);
+               amounts[offset + j * propsLength + 3] = rewardTracker.cumulativeRewards(_account, rewardToken);
+               amounts[offset + j * propsLength + 4] = IERC20(rewardToken).totalSupply();
 
-                address rewardToken = rewardTokens[j];
-                rewardTokenAddresses[rewardTokenAddresses.length] = rewardToken;
-                amounts[i * propsLength + j * propsLength] = rewardTracker.claimable(_account, rewardToken);
-                amounts[i * propsLength + j * propsLength + 1] = rewardTracker.tokensPerInterval(rewardToken);
-                amounts[i * propsLength + j * propsLength + 2] = rewardTracker.averageStakedAmounts(_account);
-                amounts[i * propsLength + j * propsLength + 3] = rewardTracker.cumulativeRewards(_account, rewardToken);
-                amounts[i * propsLength + j * propsLength + 4] = IERC20(rewardToken).totalSupply();
-            }
-        }
+               if (j == rewardTokens.length - 1) offset += j * propsLength + 4;
+           }
+       }
         return (amounts,rewardTokenAddresses);
     }
 }

@@ -27,11 +27,8 @@ contract VaultPriceFeed is IVaultPriceFeed {
     address public gov;
 
     bool public isSecondaryPriceEnabled = true;
-    bool public favorPrimaryPrice = false;
-    uint256 public priceSampleSpace = 1;
     uint256 public maxStrictPriceDeviation = 0;
     address public secondaryPriceFeed;
-    uint256 public spreadThresholdBasisPoints = 30;
 
 
     mapping (address => address) public priceFeeds;
@@ -91,19 +88,6 @@ contract VaultPriceFeed is IVaultPriceFeed {
     function setSpreadBasisPoints(address _token, uint256 _spreadBasisPoints) external override onlyGov {
         require(_spreadBasisPoints <= MAX_SPREAD_BASIS_POINTS, "VaultPriceFeed: invalid _spreadBasisPoints");
         spreadBasisPoints[_token] = _spreadBasisPoints;
-    }
-
-    function setSpreadThresholdBasisPoints(uint256 _spreadThresholdBasisPoints) external override onlyGov {
-        spreadThresholdBasisPoints = _spreadThresholdBasisPoints;
-    }
-
-    function setFavorPrimaryPrice(bool _favorPrimaryPrice) external override onlyGov {
-        favorPrimaryPrice = _favorPrimaryPrice;
-    }
-
-    function setPriceSampleSpace(uint256 _priceSampleSpace) external override onlyGov {
-        require(_priceSampleSpace > 0, "VaultPriceFeed: invalid _priceSampleSpace");
-        priceSampleSpace = _priceSampleSpace;
     }
 
     function setMaxStrictPriceDeviation(uint256 _maxStrictPriceDeviation) external override onlyGov {

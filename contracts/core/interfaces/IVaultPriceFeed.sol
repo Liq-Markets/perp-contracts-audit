@@ -8,8 +8,6 @@ interface IVaultPriceFeed {
     function setAdjustment(address _token, bool _isAdditive, uint256 _adjustmentBps) external;
     function setIsSecondaryPriceEnabled(bool _isEnabled) external;
     function setSpreadBasisPoints(address _token, uint256 _spreadBasisPoints) external;
-    function setSpreadThresholdBasisPoints(uint256 _spreadThresholdBasisPoints) external;
-    function setFavorPrimaryPrice(bool _favorPrimaryPrice) external;
     function setMaxStrictPriceDeviation(uint256 _maxStrictPriceDeviation) external;
     function getPrice(address _token, bool _maximise) external view returns (uint256);
     function getPrimaryPrice(address _token, bool _maximise) external view returns (uint256);
@@ -19,5 +17,4 @@ interface IVaultPriceFeed {
         uint256 _priceDecimals,
         bool _isStrictStable
     ) external;
-    function setPriceSampleSpace(uint256 _priceSampleSpace) external;
 }
