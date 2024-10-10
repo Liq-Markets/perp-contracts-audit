@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
@@ -29,12 +30,12 @@ contract PythToChainlinkWrapper is IPriceFeed {
         return roundId;
     }
 
-    function latestAnswer() external view override returns (int256) {
-        (uint256 price, uint80 _) = _getPythPrice(true, true);
+    function latestAnswer(bool _maximise) external view override returns (int256) {
+        (uint256 price, uint80 _) = _getPythPrice(false, _maximise);
         return int256(price);
     }
 
-    function latestRoundData() external view returns (
+    function latestRoundData(bool _maximise) external view override returns (
         uint80 roundId,
         int256 answer,
         uint256 startedAt,
@@ -42,7 +43,7 @@ contract PythToChainlinkWrapper is IPriceFeed {
         uint80 answeredInRound
     ) {        
         // Convert Pyth price to Chainlink format
-        (uint256 price, uint80 _roundId) = _getPythPrice(true, true);
+        (uint256 price, uint80 _roundId) = _getPythPrice(false, _maximise);
 
         
         return (

@@ -25,7 +25,7 @@ contract PriceFeed is IPriceFeed {
         isAdmin[_account] = _isAdmin;
     }
 
-    function latestAnswer() public override view returns (int256) {
+    function latestAnswer(bool _maximise) public override view returns (int256) {
         return answer;
     }
 
@@ -46,5 +46,9 @@ contract PriceFeed is IPriceFeed {
         returns (uint80, int256, uint256, uint256, uint80)
     {
         return (_roundId, answers[_roundId], 0, 0, 0);
+    }
+
+    function latestRoundData(bool _maximise) external view override returns (uint80, int256, uint256, uint256, uint80) {
+        return (roundId, answers[roundId], 0, 0, 0);
     }
 }

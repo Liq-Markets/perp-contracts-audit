@@ -170,7 +170,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
 
         IPriceFeed priceFeed = IPriceFeed(priceFeedAddress);
 
-        int256 price = priceFeed.latestAnswer();
+        int256 price = priceFeed.latestAnswer(_maximise);
         
 
         require(price > 0, "VaultPriceFeed: could not fetch price");
