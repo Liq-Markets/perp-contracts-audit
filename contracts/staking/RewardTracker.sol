@@ -44,9 +44,6 @@ contract RewardTracker is IERC20, ReentrancyGuard, IRewardTracker, Governable {
 
     mapping(address => mapping(address => uint256)) public override cumulativeRewards;
 
-    mapping(address => uint256) public override averageStakedAmounts;
-
-
     bool public inPrivateTransferMode;
     bool public inPrivateStakingMode;
     bool public inPrivateClaimingMode;
@@ -425,11 +422,6 @@ contract RewardTracker is IERC20, ReentrancyGuard, IRewardTracker, Governable {
 
         if (_claimableReward > 0 && stakedAmounts[_account] > 0) {
             uint256 nextCumulativeReward = cumulativeRewards[_account][_rewardToken].add(accountReward);
-
-            averageStakedAmounts[_account] = averageStakedAmounts[_account].mul(cumulativeRewards[_account][_rewardToken]).div(nextCumulativeReward).add(
-                stakedAmount.mul(accountReward).div(nextCumulativeReward)
-            );
-
             cumulativeRewards[_account][_rewardToken] = nextCumulativeReward;
         }
     }

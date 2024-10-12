@@ -17,7 +17,6 @@ interface IRewardTracker {
     function claimAllForAccount(address _account, address _receiver) external returns (address[] memory,uint256[] memory);
     function claimable(address _account, address _rewardToken) external view returns (uint256);
     function claimableAll(address _account) external view  returns (address[] memory,uint256[] memory);
-    function averageStakedAmounts(address _account) external view returns (uint256);
     function cumulativeRewards(address _account, address _rewardToken) external view returns (uint256);
     function hasCumulativeRewards(address _account) external view returns (bool);
     function getAllRewardTokens() external view returns (address[] memory);

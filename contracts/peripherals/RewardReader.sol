@@ -25,7 +25,7 @@ contract RewardReader {
     }
 
     function getStakingInfo(address _account, address[] memory _rewardTrackers) public view returns (uint256[] memory, address[] memory) {
-        uint256 propsLength = 5;
+        uint256 propsLength = 4;
         uint256 totalPropsLength = 0;
         
         for (uint256 i = 0; i < _rewardTrackers.length; i++) {
@@ -43,9 +43,8 @@ contract RewardReader {
                rewardTokenAddresses[offset / propsLength + j] = rewardToken;
                amounts[offset + j * propsLength] = rewardTracker.claimable(_account, rewardToken);
                amounts[offset + j * propsLength + 1] = rewardTracker.tokensPerInterval(rewardToken);
-               amounts[offset + j * propsLength + 2] = rewardTracker.averageStakedAmounts(_account);
-               amounts[offset + j * propsLength + 3] = rewardTracker.cumulativeRewards(_account, rewardToken);
-               amounts[offset + j * propsLength + 4] = IERC20(rewardToken).totalSupply();
+               amounts[offset + j * propsLength + 2] = rewardTracker.cumulativeRewards(_account, rewardToken);
+               amounts[offset + j * propsLength + 3] = IERC20(rewardToken).totalSupply();
 
                if (j == rewardTokens.length - 1) offset += j * propsLength + propsLength ;
            }
